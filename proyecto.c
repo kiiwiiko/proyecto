@@ -233,3 +233,178 @@ void opciones() {
     }
 }
 
+void escribirEnArchivo(char especialidad[], struct CitaMedica cita) {
+    FILE *archivo;
+    archivo = fopen(especialidad, "a");
+
+    if (archivo == NULL) {
+        printf("Error al abrir el archivo.\n");
+        return;
+    }
+
+    fprintf(archivo, "%s;%s;%d;%s;%s;%d;%d\n", cita.nombre, cita.apellido, cita.cedula, cita.especialidad, cita.horario, cita.mes, cita.dia);
+    fclose(archivo);
+}
+
+void leerArchivo(char especialidad[]) {
+    FILE *archivo;
+    char linea[100];
+
+    archivo = fopen(especialidad, "r");
+
+    if (archivo == NULL) {
+        printf("Error al abrir el archivo.\n");
+        return;
+    }
+
+    printf("----- Citas Médicas de la Especialidad: %s -----\n", especialidad);
+    while (fgets(linea, sizeof(linea), archivo)) {
+        printf("%s", linea);
+    }
+
+    fclose(archivo);
+}
+
+void borrarCita(char especialidad[], int cedula) {
+    FILE *archivo;
+    FILE *temp;
+    char linea[100];
+
+    archivo = fopen(especialidad, "r");
+    temp = fopen("temp.txt", "w");
+
+    if (archivo == NULL || temp == NULL) {
+        printf("Error al abrir el archivo.\n");
+        return;
+    }
+
+    while (fgets(linea, sizeof(linea), archivo)) {
+        char *cedulaStr = strtok(linea, ";");
+        int cedulaActual = atoi(cedulaStr);
+
+        if (cedulaActual != cedula) {
+            fputs(linea, temp);
+        }
+    }
+
+    fclose(archivo);
+    fclose(temp);
+
+    remove(especialidad);
+    rename("temp.txt", especialidad);
+}
+
+void actualizarCita(char especialidad[], int cedula, struct CitaMedica nuevaCita) {
+    FILE *archivo;
+    FILE *temp;
+    char linea[100];
+
+    archivo = fopen(especialidad, "r");
+    temp = fopen("temp.txt", "w");
+
+    if (archivo == NULL || temp == NULL) {
+        printf("Error al abrir el archivo.\n");
+        return;
+    }
+
+    while (fgets(linea, sizeof(linea), archivo)) {
+        char *cedulaStr = strtok(linea, ";");
+        int cedulaActual = atoi(cedulaStr);
+
+        if (cedulaActual == cedula) {
+            fprintf(temp, "%s;%s;%d;%s;%s;%d;%d\n", nuevaCita.nombre, nuevaCita.apellido, nuevaCita.cedula, nuevaCita.especialidad, nuevaCita.horario, nuevaCita.mes, nuevaCita.dia);
+        } else {
+            fputs(linea, temp);
+        }
+    }
+
+    fclose(archivo);
+    fclose(temp);
+
+    remove(especialidad);
+    rename("temp.txt", especialidad);
+}
+
+void buscarCita(char especialidad[], char busqueda[]) {
+    FILE *archivo;
+    char linea[100];
+
+    archivo = fopen(especialidad, "r");
+
+    if (archivo == NULL) {
+        printf("Error al abrir el archivo.\n");
+        return;
+    }
+
+    printf("----- Resultados de la búsqueda -----\n");
+    while (fgets(linea, sizeof(linea), archivo)) {
+        char *nombre = strtok(linea, ";");
+        char *apellido = strtok(NULL, ";");
+        char *cedulaStr = strtok(NULL, ";");
+        int cedula = atoi(cedulaStr);
+
+        if (strcmp(nombre, busqueda) == 0 || strcmp(apellido, busqueda) == 0 || cedula == atoi(busqueda)) {
+            printf("%s", linea);
+        }
+    }
+
+    fclose(archivo);
+}
+
+void obtenerHorariosDisponibles(char especialidad[], struct Especialidad especialidades[], int cantidadEspecialidades, char horariosDisponibles[][50]) {
+    for (int i = 0; i < cantidadEspecialidades; i++) {
+        if (strcmp(especialidades[i].nombre, especialidad) == 0) {
+            for (int j = 0; j < 5; j++) {
+                strcpy(horariosDisponibles[j], especialidades[i].horariosDisponibles[j]);
+            }
+            break;
+        }
+    }
+}
+
+int seleccionarHorario(char horariosDisponibles[][50], int cantidadHorarios) {
+    int opcion;
+
+    do {
+        printf("Seleccione un horario: ");
+        scanf("%d", &opcion);
+
+        if (opcion < 1 || opcion > cantidadHorarios) {
+            printf("Opción inválida. Por favor, seleccione una opción válida.\n");
+        }
+    } while (opcion < 1 || opcion > cantidadHorarios);
+
+    return opcion;
+}
+
+int verificarDisponibilidad(char especialidad[], char horario[], int mes, int dia) {
+    FILE *archivo;
+    char linea[100];
+
+    archivo = fopen(especialidad, "r");
+
+    if (archivo == NULL) {
+        printf("Error al abrir el archivo.\n");
+        return 0;
+    }
+
+    while (fgets(linea, sizeof(linea), archivo)) {
+        char *cedulaStr = strtok(linea, ";");
+        strtok(NULL, ";"); // Ignorar apellido
+        strtok(NULL, ";"); // Ignorar nombre
+        strtok(NULL, ";"); // Ignorar especialidad
+        char *horarioCita = strtok(NULL, ";");
+        char *mesStr = strtok(NULL, ";");
+        char *diaStr = strtok(NULL, ";");
+        int mesCita = atoi(mesStr);
+        int diaCita = atoi(diaStr);
+
+        if (strcmp(horarioCita, horario) == 0 && mesCita == mes && diaCita == dia) {
+            fclose(archivo);
+            return 0; // Cita ocupada
+        }
+    }
+
+    fclose(archivo);
+    return 1; // Cita disponible
+}
